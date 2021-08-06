@@ -2,15 +2,16 @@ import { reactive, ref } from 'vue'
 import { fabric } from "fabric";
 const throttle = require("lodash/throttle")
 const gridBg = require("../../assets/grid.svg")
-// const car = require("../../assets/car.png")
 const car = require("../../assets/car5.png");
 const pavement1 = require("../../assets/pavement1.png");
 const pavement2 = require("../../assets/pavement2.png");
+const pavement3 = require("../../assets/pavement3.png");
 let timer = ref("");
 let gameOver = ref(false);
-let startFlag = true;
+let startFlag = ref(true);
 let canvas = reactive({});
 let currentSquare = null;
+let youWin = false;
 let blocksRemaining = ref(99);
 const canvasCar = ref({});
 let conHolder = {};
@@ -25,6 +26,7 @@ const cEvent = {
       fireRightClick: true,
       fireMiddleClick: true,
       stopContextMenu: true,
+      renderOnAddRemove: false,
     }));
     canvas.objectSelected = null;
     canvas.centeredScaling = true;
@@ -55,9 +57,10 @@ const cEvent = {
           originY: "center",
           shadow: shadow,
           angle: 90,
-          opacity: 0.98,
+          // opacity: 0.98,
           objectCaching: false,
           selectable: false,
+          hasControls: false,
           evented: false,
           dirty: true,
         }));
@@ -71,19 +74,36 @@ const cEvent = {
       });
     this.setSquares();
     reset();
-    startFlag = true;
+    startFlag.value = true;
     print("00:00:00");
+  },
+  winner() {
+    youWin = true;
+    canvas.forEachObject(obj => {
+      if (obj !== canvas.car) {
+        obj.opacity = 1;
+        obj.scaleY = 1;
+        obj.scaleX = 1;
+        obj.death = false;
+        obj.set('fill', new fabric.Pattern({
+          source: pavement3,
+          repeat: "repeat",
+        }));
+      }
+    })
   },
   setSquares() {
     let square = {
       width: 1000,
       height: 1000,
-      fill: "white",
-      opacity: 0.5,
+      // fill: "white",
+      // opacity: 0.5,
       objectCaching: false,
       dirty: true,
       selectable: false,
+      hasControls: false,
       centeredScaling: true,
+      hasRotatingPoint: false,
       originX: "center",
       originY: "center",
       top: 500,
@@ -113,7 +133,7 @@ const cEvent = {
       square.top += 1000;
       count++;
     }
-    canvas.renderAll();
+    // canvas.renderAll();
   },
   mouseUp(opt) {
     console.log("mouse up", opt);
@@ -142,62 +162,12 @@ const cEvent = {
       canvas.lastPosY = e.clientY;
     }
   },
-  mouseWheel(opt) {
-    console.log("mouse wheel", opt);
-    var delta = opt.e.deltaY;
-    var zoom = canvas.getZoom();
-    zoom *= 0.999 ** delta;
-    if (zoom > 20) zoom = 20;
-    if (zoom < 0.05) zoom = 0.05;
-    canvas.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, zoom);
-    opt.e.preventDefault();
-    opt.e.stopPropagation();
-  },
-  mouseOver(opt) {
-    console.log("mouse over", opt, opt.target);
-    if (opt.target) {
-      mouseOver.isTarget = true;
-      mouseOver.target = opt.target;
-    }
-  },
-  mouseOut(opt) {
-    console.log("mouse out", opt);
-    mouseOver.isTarget = false;
-    mouseOver.target = null;
-  },
-  selectionCreated(opt) {
-    console.log("selection created", opt);
-    canvas.objectSelected = opt.selected;
-  },
-  selectionCleared(opt) {
-    console.log("selection cleared", opt);
-    canvas.objectSelected = null;
-  },
-  selectionUpdated(opt) {
-    console.log("selection updated", opt);
-    canvas.objectSelected = opt.selected;
-  },
-  pathCreated(opt) {
-    console.log("math created", opt);
-  },
-  objectMoving(opt) {
-    console.log("object moving", opt);
-
-  },
-  objectMoved(opt) {
-    console.log("object moved", opt);
-  },
-  objectRotating(opt) {
-    console.log("object rotating", opt);
-  },
-  objectScaling(opt) {
-    console.log("object scaling", opt);
-  },
-  objectModified(opt) {
-    console.log("object modified", opt);
-  },
   afterRender: throttle(() => {
-    if (!canvas.car || gameOver.value) return;
+    if (!canvas.car || gameOver.value || youWin) return;
+    if (blocksRemaining.value === 0) {
+      cEvent.winner();
+      return;
+    }
     let timeNow = Date.now();
     canvas.forEachObject((obj) => {
       if (canvas.car.intersectsWithObject(obj) && obj !== canvas.car && obj !== currentSquare) {
@@ -210,17 +180,16 @@ const cEvent = {
           });
         }
         else if (timeNow - obj.tod < 2000) {
-          console.log("too soon");
+          // console.log("too soon");
         }
         else {
-          obj.death = true;
-          obj.tod = Date.now();
-          currentSquare = obj;
           blocksRemaining.value--;
-          obj.animate({ opacity: 0, scaleX: 0.8, scaleY: 0.8, }, { onChange: canvas.renderAll.bind(canvas) });
-          // obj.animate("opacity", 1, {
-          //   onChange: canvas.renderAll.bind(canvas),
-          // });
+          if (blocksRemaining.value > 0) {
+            obj.death = true;
+            obj.tod = Date.now();
+            currentSquare = obj;
+            obj.animate({ opacity: 0, scaleX: 0.8, scaleY: 0.8, }, { onChange: canvas.renderAll.bind(canvas) });
+          }
         }
       }
     })
@@ -237,6 +206,7 @@ const cFunction = {
     canvas.discardActiveObject();
   },
   reset() {
+    youWin = false;
     canvas.forEachObject((obj) => {
       canvas.remove(obj);
     });
@@ -249,16 +219,16 @@ const cFunction = {
     blocksRemaining.value = 99;
   },
   setView() {
-    if (startFlag) {
+    if (startFlag.value) {
       start();
-      startFlag = false;
+      startFlag.value = false;
     }
     let zoom = 0.02 * (canvas.car.lastSpeed - canvas.car.currentSpeed);
     zoom += canvas.getZoom();
     let newLeft = (-canvas.car.left * zoom) + conHolder.clientWidth / 2;
     let newTop = (-canvas.car.top * zoom) + conHolder.clientHeight / 2;
     canvas.setViewportTransform([zoom, 0, 0, zoom, newLeft, newTop]);
-    canvas.requestRenderAll();
+    // canvas.requestRenderAll();
     canvas.car.lastSpeed = canvas.car.currentSpeed;
   }
 }
@@ -315,6 +285,8 @@ function reset() {
   elapsedTime = 0;
 }
 export {
-  canvas, cEvent, cFunction, mouseOver, blocksRemaining, timer, gameOver, canvasCar,
+  canvas,
+  cEvent,
+  cFunction, mouseOver, blocksRemaining, timer, gameOver, canvasCar, startFlag,
 }
 

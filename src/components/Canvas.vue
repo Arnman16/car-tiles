@@ -3,7 +3,9 @@
     <canvas class="canv" ref="can"></canvas>
   </div>
   <button @click="reset" class="reset-button">Reset</button>
-  <button @click="tests" v-show="false" class="tests-button">TEST</button>
+  <button @click="tests" v-show="true" class="tests-button">
+    {{ average }}
+  </button>
   <div class="card score">
     <div class="container">
       <div class="text-md text-center">{{ timer }}</div>
@@ -73,6 +75,9 @@
       </div>
     </div>
   </div>
+  <div class="intro" v-show="startFlag">
+    Get all the tiles and don't fall!
+  </div>
 </template>
 
 <script>
@@ -87,11 +92,11 @@ import {
   timer,
   gameOver,
   canvasCar,
+  startFlag,
 } from "./js/canvasEvents";
 const debounce = require("lodash/debounce");
 const throttle = require("lodash/throttle");
 const isEmpty = require("lodash/isEmpty");
-// const clone = require("lodash/clone");
 
 export default {
   setup() {
@@ -129,7 +134,7 @@ export default {
           stickySteering = options.stickySteering;
         }
       } else canvas.car.angle = 255;
-      canvas.renderAll();
+      // canvas.renderAll();
     }, 30);
     const right = throttle(() => {
       if (canvas.car.angle !== undefined) {
@@ -140,7 +145,7 @@ export default {
           stickySteering = options.stickySteering;
         }
       } else canvas.car.angle = 5;
-      canvas.renderAll();
+      // canvas.renderAll();
     }, 30);
     const add = () => {
       let newRect = new fabric.Rect({
@@ -157,7 +162,7 @@ export default {
       newRect.left = y.value;
       newRect.top = y.value;
       canvas.add(newRect);
-      canvas.renderAll();
+      // canvas.renderAll();
     };
     const tests = () => {
       console.log(canvas.__eventListeners);
@@ -166,8 +171,10 @@ export default {
       gameOver.value = false;
     };
     let velocity = () => {
-      let go = controller.value["ArrowUp"].pressed || controller.value["w"].pressed;
-      let brake = controller.value["ArrowDown"].pressed || controller.value["s"].pressed;
+      let go =
+        controller.value["ArrowUp"].pressed || controller.value["w"].pressed;
+      let brake =
+        controller.value["ArrowDown"].pressed || controller.value["s"].pressed;
       if (go && !canvas.gameOver) {
         if (canvas.car.currentSpeed === 0) {
           canvas.car.currentSpeed = 2;
@@ -207,7 +214,7 @@ export default {
         canvas.car.top = canvas.backgroundImage.height - 100;
       cFunction.setView();
       canvas.car.setCoords();
-      canvas.renderAll();
+      // canvas.renderAll();
     }, 15);
     const controller = ref({
       ArrowUp: { pressed: false, func: forward },
@@ -219,11 +226,27 @@ export default {
       a: { pressed: false, func: left },
       d: { pressed: false, func: right },
     });
-    const animate = () => {
+    let time = 0;
+    let average = ref({});
+    let samples = [];
+
+    const animate = (timeStamp) => {
+      let fps = 1000 / (timeStamp - time);
+      samples.push(fps);
+      if (samples.length > 60) samples.shift();
+      let sum = 0;
+      samples.forEach((sample) => {
+        sum += sample;
+      });
+      average.value = `${(sum / samples.length).toFixed(1)} fps`;
+      // console.log("fps: ", average.value);
+      time = timeStamp;
+
       if (canvas && canvas.car) {
         runPressedButtons();
       }
       animationId.value = window.requestAnimationFrame(animate);
+      canvas.renderAll();
     };
     onMounted(() => {
       cEvent.setCanvas(can.value, con.value);
@@ -233,57 +256,6 @@ export default {
       window.addEventListener("resize", () => {
         resizeCanvas();
       });
-      // canvas.on({
-      //   "mouse:up": (opt) => {
-      //     cEvent.mouseUp(opt);
-      //   },
-      //   "mouse:down": (opt) => {
-      //     cEvent.mouseDown(opt);
-      //   },
-      //   "mouse:move": (opt) => {
-      //     throt(cEvent.mouseMove, opt);
-      //   },
-      //   "mouse:wheel": (opt) => {
-      //     throt(cEvent.mouseWheel, opt);
-      //   },
-      //   "mouse:over": (opt) => {
-      //     debou(cEvent.mouseOver, opt);
-      //   },
-      //   "mouse:out": (opt) => {
-      //     debou(cEvent.mouseOut, opt);
-      //   },
-      //   "selection:created": (opt) => {
-      //     cEvent.selectionCreated(opt);
-      //   },
-      //   "selection:cleared": (opt) => {
-      //     cEvent.selectionCleared(opt);
-      //   },
-      //   "selection:updated": (opt) => {
-      //     cEvent.selectionUpdated(opt);
-      //   },
-      //   "path:created": (opt) => {
-      //     cEvent.pathCreated(opt);
-      //   },
-      //   "object:moving": (opt) => {
-      //     throt(cEvent.objectMoving, opt);
-      //   },
-      //   "object:moved": (opt) => {
-      //     cEvent.objectMoved(opt);
-      //   },
-      //   "object:rotating": (opt) => {
-      //     throt(cEvent.objectRotating, opt);
-      //   },
-      //   "object:scaling": (opt) => {
-      //     throt(cEvent.objectScaling, opt);
-      //   },
-      //   "object:modified": (opt) => {
-      //     cEvent.objectModified(opt);
-      //   },
-      //   "after:render": (opt) => {
-      //     cEvent.afterRender(opt);
-      //   },
-      // });
-
       window.addEventListener("keydown", (e) => {
         if (controller.value[e.key]) {
           controller.value[e.key].pressed = true;
@@ -299,18 +271,14 @@ export default {
         e.stopPropagation();
       });
     });
-    // const throt = throttle((func, opt) => {
-    //   func(opt);
-    // }, 30);
-    // const debou = debounce((func, opt) => {
-    //   func(opt);
-    // }, 30);
     const resizeCanvas = debounce(() => {
       if (!con.value) return;
       canvas.setDimensions({
         width: con.value.clientWidth,
         height: con.value.clientHeight,
       });
+      canvas.car.top = con.value.clientHeight / 2;
+      canvas.car.left = con.value.clientWidth / 2;
     }, 200);
     const runPressedButtons = () => {
       Object.keys(controller.value).forEach((key) => {
@@ -325,6 +293,7 @@ export default {
       con,
       can,
       add,
+      average,
       canvas,
       controller,
       resizeCanvas,
@@ -341,6 +310,7 @@ export default {
       close,
       timer,
       canvasCar,
+      startFlag,
       // ...canvasEvents,
     };
   },
@@ -460,5 +430,13 @@ export default {
   color: black;
   text-decoration: none;
   cursor: pointer;
+}
+.intro {
+  position: fixed;
+  left: 30vw;
+  top: 32vh;
+  max-width: 40;
+  color: whitesmoke;
+  font-size: 2rem;
 }
 </style>

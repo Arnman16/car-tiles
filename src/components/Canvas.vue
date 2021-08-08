@@ -1,5 +1,11 @@
 <template>
-  <div class="cantainer" @dragover.prevent ref="con">
+  <div
+    class="cantainer"
+    v-touch:press="touchStart"
+    v-touch:drag="touchDrag"
+    v-touch:release="touchEnd"
+    ref="con"
+  >
     <canvas class="canv" ref="can"></canvas>
   </div>
   <button @click="reset" class="reset-button">Reset</button>
@@ -9,7 +15,7 @@
   <div class="card score">
     <div class="container">
       <div class="text-md text-center">{{ timer }}</div>
-      <span class="text-lg">Blocks remaining:</span>
+      <span class="text-lg">Tiles remaining:</span>
       <div class="text-2xl text-center strong font-bold">
         {{ blocksRemaining }}
       </div>
@@ -75,9 +81,7 @@
       </div>
     </div>
   </div>
-  <div class="intro" v-show="startFlag">
-    Get all the tiles and don't fall!
-  </div>
+  <!-- <div class="intro" v-show="startFlag">Get all the tiles and don't fall!</div> -->
 </template>
 
 <script>
@@ -166,13 +170,21 @@ export default {
     };
     const tests = () => {
       console.log(canvas.__eventListeners);
+      console.log(
+        "Vpt: ",
+        canvas.viewportTransform,
+        con.value.clientWidth,
+        con.value.clientHeight
+      );
     };
     const close = () => {
       gameOver.value = false;
     };
     let velocity = () => {
       let go =
-        controller.value["ArrowUp"].pressed || controller.value["w"].pressed;
+        controller.value["ArrowUp"].pressed ||
+        controller.value["w"].pressed ||
+        touch.up;
       let brake =
         controller.value["ArrowDown"].pressed || controller.value["s"].pressed;
       if (go && !canvas.gameOver) {
@@ -250,12 +262,12 @@ export default {
     };
     onMounted(() => {
       cEvent.setCanvas(can.value, con.value);
-      resizeCanvas();
       canvas.renderAll();
       console.log(canvas);
       window.addEventListener("resize", () => {
         resizeCanvas();
       });
+      resizeCanvas();
       window.addEventListener("keydown", (e) => {
         if (controller.value[e.key]) {
           controller.value[e.key].pressed = true;
@@ -267,28 +279,77 @@ export default {
         if (controller.value[e.key]) {
           controller.value[e.key].pressed = false;
         }
+        if (gameOver.value && e.key === "Enter") {
+          cFunction.reset();
+        }
         e.preventDefault();
         e.stopPropagation();
       });
     });
     const resizeCanvas = debounce(() => {
-      if (!con.value) return;
+      if (!con.value || !canvas) return;
       canvas.setDimensions({
         width: con.value.clientWidth,
         height: con.value.clientHeight,
       });
-      canvas.car.top = con.value.clientHeight / 2;
-      canvas.car.left = con.value.clientWidth / 2;
+      canvasCar.value.top = 500;
+      canvasCar.value.left = 500;
     }, 200);
     const runPressedButtons = () => {
       Object.keys(controller.value).forEach((key) => {
         if (controller.value[key].pressed) {
           controller.value[key].func();
         }
+        if (touch.left) left();
+        if (touch.right) right();
       });
       moveForward();
     };
-
+    let touch = {
+      x: null,
+      y: null,
+      up: false,
+      down: false,
+      left: false,
+      right: false,
+    };
+    const touchStart = (e) => {
+      console.log("Touch Start", e, e.touches.length);
+      if (e.touches.length > 1) {
+        touch.left = false;
+        touch.right = false;
+        touch.up = true;
+      }
+    };
+    const touchEnd = (e) => {
+      console.log("Touch End", e);
+      let middle = con.value.clientWidth / 2;
+      if (e.touches.length === 1) {
+        if (e.touches[0].clientX > middle) {
+          touch.left = false;
+          touch.right = true;
+        } else {
+          touch.left = true;
+          touch.right = false;
+        }
+      } else {
+        touch.up = false;
+        touch.down = false;
+        touch.left = false;
+        touch.right = false;
+        touch.x = null;
+        touch.y = null;
+      }
+    };
+    const touchDrag = () => {
+      // console.log("Touch Drag", e);
+      // if (e.touches[1].clientX - 20 > touch.x) touch.right = true;
+      // else if (e.touches[1].clientX + 20 < touch.x) touch.left = true;
+      // else {
+      //   touch.right = false;
+      //   touch.left = false;
+      // }
+    };
     return {
       con,
       can,
@@ -311,6 +372,9 @@ export default {
       timer,
       canvasCar,
       startFlag,
+      touchStart,
+      touchEnd,
+      touchDrag,
       // ...canvasEvents,
     };
   },
@@ -338,8 +402,12 @@ export default {
   @apply bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full;
 }
 .tests-button {
-  @apply reset-button;
-  top: 100px;
+  @apply bg-green-700 hover:bg-green-600 text-white font-bold py-2 px-4;
+  z-index: 0;
+  position: fixed !important;
+  bottom: 30px;
+  right: 30px;
+  opacity: 0.3;
 }
 .score {
   z-index: 0;

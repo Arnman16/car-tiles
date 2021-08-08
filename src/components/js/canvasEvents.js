@@ -38,6 +38,7 @@ const cEvent = {
       this.afterRender();
     });
     this.setObjects();
+    this.setSquares();
   },
   setObjects() {
     fabric.Image.fromURL(
@@ -64,15 +65,29 @@ const cEvent = {
           evented: false,
           dirty: true,
         }));
-        canvas.car.top = conHolder.clientHeight / 2;
-        canvas.car.left = conHolder.clientWidth / 2;
+        canvas.car.top = 500;
+        canvas.car.left = 500;
         canvas.car.currentSpeed = 0;
         canvas.car.lastSpeed = 0;
         canvas.car.setCoords();
+        let isMobile = (conHolder.clientHeight > conHolder.clientWidth);
+        let introText = new fabric.Text("Objectives: \n  ◦ Get the tiles\n  ◦ Don't fall!\nControls: \n  ▲◄▼►  or  WASD").set({
+          top: canvas.car.top - (isMobile ? 240 : 320),
+          left: canvas.car.left - 160,
+          fill: "white", selectable: false,
+          evented: false,
+          hasControls: false,
+          scaleX: isMobile ? 0.7 : 1,
+          scaleY: isMobile ? 0.7 : 1,
+          opacity: 0.8,
+        });
+        canvas.introText = introText;
+        canvas.add(introText);
         canvasCar.value = canvas.car;
-        canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
+        let w = conHolder.clientWidth / 2 - 500;
+        let h = conHolder.clientHeight / 2 - 500;
+        canvas.setViewportTransform([1, 0, 0, 1, w, h]);
       });
-    this.setSquares();
     reset();
     startFlag.value = true;
     print("00:00:00");
@@ -80,7 +95,7 @@ const cEvent = {
   winner() {
     youWin = true;
     canvas.forEachObject(obj => {
-      if (obj !== canvas.car) {
+      if (obj !== canvas.car && obj !== canvas.introText) {
         obj.opacity = 1;
         obj.scaleY = 1;
         obj.scaleX = 1;
@@ -170,7 +185,7 @@ const cEvent = {
     }
     let timeNow = Date.now();
     canvas.forEachObject((obj) => {
-      if (canvas.car.intersectsWithObject(obj) && obj !== canvas.car && obj !== currentSquare) {
+      if (canvas.car.intersectsWithObject(obj) && obj !== canvas.car && obj !== currentSquare && obj !== canvas.introText) {
         if (obj.tod && (timeNow - obj.tod > 2000)) {
           pause();
           gameOver.value = true;
@@ -188,7 +203,7 @@ const cEvent = {
             obj.death = true;
             obj.tod = Date.now();
             currentSquare = obj;
-            obj.animate({ opacity: 0, scaleX: 0.8, scaleY: 0.8, }, { onChange: canvas.renderAll.bind(canvas) });
+            obj.animate({ opacity: 0, scaleX: 0.8, scaleY: 0.8, }, { onChange: canvas.renderAll.bind(canvas) }, 1);
           }
         }
       }
@@ -214,8 +229,9 @@ const cFunction = {
     gameOver.value = false;
     canvas.car.currentSpeed = 0;
     canvas.car.lastSpeed = 0;
-    cEvent.setObjects();
     currentSquare = null;
+    cEvent.setObjects();
+    cEvent.setSquares();
     blocksRemaining.value = 99;
   },
   setView() {

@@ -2,8 +2,8 @@
   <div
     class="cantainer"
     v-touch:press="touchStart"
-    v-touch:drag="touchDrag"
     v-touch:release="touchEnd"
+    v-touch:swipe="swipeStop"
     ref="con"
   >
     <canvas class="canv" ref="can"></canvas>
@@ -315,11 +315,9 @@ export default {
     };
     const touchStart = (e) => {
       console.log("Touch Start", e, e.touches.length);
-      if (e.touches.length > 1) {
-        touch.left = false;
-        touch.right = false;
-        touch.up = true;
-      }
+      touch.left = false;
+      touch.right = false;
+      touch.up = true;
     };
     const touchEnd = (e) => {
       console.log("Touch End", e);
@@ -341,14 +339,8 @@ export default {
         touch.y = null;
       }
     };
-    const touchDrag = () => {
-      // console.log("Touch Drag", e);
-      // if (e.touches[1].clientX - 20 > touch.x) touch.right = true;
-      // else if (e.touches[1].clientX + 20 < touch.x) touch.left = true;
-      // else {
-      //   touch.right = false;
-      //   touch.left = false;
-      // }
+    const swipeStop = () => {
+      touch.up = false;
     };
     return {
       con,
@@ -374,7 +366,7 @@ export default {
       startFlag,
       touchStart,
       touchEnd,
-      touchDrag,
+      swipeStop,
       // ...canvasEvents,
     };
   },

@@ -74,12 +74,15 @@ const cEvent = {
         let introText = new fabric.Text("Objectives: \n  ◦ Get the tiles\n  ◦ Don't fall!\nControls: \n  ▲◄▼►  or  WASD").set({
           top: canvas.car.top - (isMobile ? 240 : 320),
           left: canvas.car.left - 160,
-          fill: "white", selectable: false,
+          fill: "white",
+          selectable: false,
           evented: false,
           hasControls: false,
+          dirty: true,
+          objectCaching: false,
           scaleX: isMobile ? 0.7 : 1,
           scaleY: isMobile ? 0.7 : 1,
-          opacity: 0.8,
+          opacity: 1,
         });
         canvas.introText = introText;
         canvas.add(introText);
@@ -172,7 +175,7 @@ const cEvent = {
       var e = opt.e;
       vpt[4] += e.clientX - canvas.lastPosX;
       vpt[5] += e.clientY - canvas.lastPosY;
-      canvas.requestRenderAll();
+      // canvas.requestRenderAll();
       canvas.lastPosX = e.clientX;
       canvas.lastPosY = e.clientY;
     }
@@ -191,7 +194,7 @@ const cEvent = {
           gameOver.value = true;
           canvas.car.set({ opacity: 0.8, scaleX: 0.9, scaleY: 0.9 });
           canvas.car.animate({ scaleX: 0.001, scaleY: 0.001, opacity: 0 }, {
-            onChange: canvas.renderAll.bind(canvas),
+            onChange: canvas.requestRenderAll.bind(canvas),
           });
         }
         else if (timeNow - obj.tod < 2000) {
@@ -208,7 +211,7 @@ const cEvent = {
         }
       }
     })
-  }, 200)
+  }, 300)
 }
 const cFunction = {
   remove() {

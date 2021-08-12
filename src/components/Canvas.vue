@@ -10,7 +10,7 @@
   </div>
   <button @click="reset" class="reset-button">Reset</button>
   <button @click="tests" v-show="true" class="tests-button">
-    {{ average }}
+    {{ averageFps }}
   </button>
   <div class="card score">
     <div class="container">
@@ -65,6 +65,20 @@
         <div class="h-16 flex flex-wrap content-center justify-center">
           <button
             class="
+              bg-green-500
+              hover:bg-green-700
+              text-white
+              font-bold
+              py-2
+              px-4
+              rounded-full
+            "
+            @click="submitScore"
+          >
+            Submit Score!
+          </button>
+          <button
+            class="
               bg-blue-500
               hover:bg-blue-700
               text-white
@@ -85,7 +99,7 @@
 </template>
 
 <script>
-import { fabric } from "fabric";
+// import { fabric } from "fabric";
 import { ref, onMounted, watch } from "vue";
 import {
   cEvent,
@@ -107,7 +121,7 @@ export default {
     const con = ref(null); // canvas container ref
     const can = ref(null); // canvas ref
     let modal = ref(null);
-    const y = ref(100);
+    // const y = ref(100);
     const animationId = ref({});
     const forward = () => {};
     watch(canvasCar, (value) => {
@@ -151,23 +165,6 @@ export default {
       } else canvas.car.angle = 5;
       // canvas.renderAll();
     }, 30);
-    const add = () => {
-      let newRect = new fabric.Rect({
-        width: 100,
-        height: 100,
-        top: 100,
-        originX: "center",
-        originY: "center",
-        y: 100,
-        fill: "rgba(255,0,255,0.5)",
-        __id: Math.random() * 1000000,
-      });
-      y.value += 50;
-      newRect.left = y.value;
-      newRect.top = y.value;
-      canvas.add(newRect);
-      // canvas.renderAll();
-    };
     const tests = () => {
       console.log(canvas.__eventListeners);
       console.log(
@@ -176,6 +173,10 @@ export default {
         con.value.clientWidth,
         con.value.clientHeight
       );
+    };
+    const submitScore = () => {
+      cFunction.setScore(averageFps.value, "Cool Dude");
+      cFunction.reset();
     };
     const close = () => {
       gameOver.value = false;
@@ -239,7 +240,7 @@ export default {
       d: { pressed: false, func: right },
     });
     let time = 0;
-    let average = ref({});
+    let averageFps = ref({});
     let samples = [];
 
     const animate = (timeStamp) => {
@@ -250,7 +251,7 @@ export default {
       samples.forEach((sample) => {
         sum += sample;
       });
-      average.value = `${(sum / samples.length).toFixed(1)} fps`;
+      averageFps.value = `${(sum / samples.length).toFixed(1)} fps`;
       // console.log("fps: ", average.value);
       time = timeStamp;
 
@@ -345,8 +346,7 @@ export default {
     return {
       con,
       can,
-      add,
-      average,
+      averageFps,
       canvas,
       controller,
       resizeCanvas,
@@ -367,6 +367,7 @@ export default {
       touchStart,
       touchEnd,
       swipeStop,
+      submitScore,
       // ...canvasEvents,
     };
   },

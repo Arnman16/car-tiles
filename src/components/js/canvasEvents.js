@@ -1,5 +1,6 @@
 import { reactive, ref } from 'vue'
 import { fabric } from "fabric";
+import { scoreCollection, firebase } from './db';
 const throttle = require("lodash/throttle")
 const gridBg = require("../../assets/grid.svg")
 const car = require("../../assets/car5.png");
@@ -15,7 +16,11 @@ let youWin = false;
 let blocksRemaining = ref(99);
 const canvasCar = ref({});
 let conHolder = {};
+let startTime;
+let elapsedTime = 0;
+let timerInterval;
 // let canHolder = {};
+
 const mouseOver = reactive({ isTarget: false, target: null });
 const cEvent = {
   setCanvas(can, con) {
@@ -93,9 +98,10 @@ const cEvent = {
       });
     reset();
     startFlag.value = true;
-    print("00:00:00");
+    print("00:00:000");
   },
   winner() {
+    pause();
     youWin = true;
     canvas.forEachObject(obj => {
       if (obj !== canvas.car && obj !== canvas.introText) {
@@ -249,6 +255,40 @@ const cFunction = {
     canvas.setViewportTransform([zoom, 0, 0, zoom, newLeft, newTop]);
     // canvas.requestRenderAll();
     canvas.car.lastSpeed = canvas.car.currentSpeed;
+  },
+  setScore(fps, name) {
+    let user = firebase.auth().currentUser;
+    if (!user) {
+      firebase.auth().signInAnonymously()
+        .then((result) => {
+          // Signed in..
+          scoreCollection.add({
+            uid: result.user.uid,
+            name: name,
+            time: timer.value,
+            timeInt: elapsedTime,
+            averageFps: fps,
+            timeStamp: firebase.firestore.FieldValue.serverTimestamp(),
+          });
+          console.log(result.user);
+        })
+        .catch((error) => {
+          var errorCode = error.code;
+          var errorMessage = error.message;
+          console.log(errorCode, errorMessage)
+          // ...
+        });
+    }
+    else {
+      scoreCollection.add({
+        uid: user.uid,
+        name: name,
+        time: timer.value,
+        timeInt: elapsedTime,
+        averageFps: fps,
+        timeStamp: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+    }
   }
 }
 // Convert time to a format of hours, minutes, seconds, and milliseconds
@@ -263,22 +303,17 @@ function timeToString(time) {
   let diffInSec = (diffInMin - mm) * 60;
   let ss = Math.floor(diffInSec);
 
-  let diffInMs = (diffInSec - ss) * 100;
+  let diffInMs = (diffInSec - ss) * 1000;
   let ms = Math.floor(diffInMs);
 
   let formattedMM = mm.toString().padStart(2, "0");
   let formattedSS = ss.toString().padStart(2, "0");
-  let formattedMS = ms.toString().padStart(2, "0");
+  let formattedMS = ms.toString().padStart(3, "0");
 
   return `${formattedMM}:${formattedSS}:${formattedMS}`;
 }
-// Declare variables to use in our functions below
 
-let startTime;
-let elapsedTime = 0;
-let timerInterval;
-
-// Create function to modify innerHTML
+// function to modify innerHTML
 
 function print(txt) {
   timer.value = txt;
@@ -295,12 +330,13 @@ function start() {
 }
 
 function pause() {
+  print(timeToString(elapsedTime));
   clearInterval(timerInterval);
 }
 
 function reset() {
   clearInterval(timerInterval);
-  print("00:00:00");
+  print("00:00:000");
   elapsedTime = 0;
 }
 export {

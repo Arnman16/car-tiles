@@ -21,79 +21,8 @@
       </div>
     </div>
   </div>
-  <div v-show="gameOver || blocksRemaining === 0" class="modal">
-    <div class="modal-content" v-if="gameOver">
-      <div class="modal-header text-xl by-2">
-        <button @click="close" class="close">&times;</button>
-        <h2>Game Over!</h2>
-      </div>
-      <div class="modal-body flex-wrap">
-        <div class="text-lg text-center text-gray-500">
-          You missed {{ blocksRemaining }} blocks!
-        </div>
-        <div class="text-lg text-center text-gray-500">
-          Try again... maybe you'll make it to the high score list!
-        </div>
-        <div class="h-16 flex flex-wrap content-center justify-center">
-          <button
-            class="
-              bg-blue-500
-              hover:bg-blue-700
-              text-white
-              font-bold
-              py-2
-              px-4
-              rounded-full
-            "
-            @click="reset"
-          >
-            TRY AGAIN!
-          </button>
-        </div>
-      </div>
-    </div>
-    <div class="modal-content" v-else>
-      <div class="modal-header text-xl by-2">
-        <button @click="close" class="close">&times;</button>
-        <h2>Winner!</h2>
-      </div>
-      <div class="modal-body flex-wrap">
-        <div class="text-lg text-center text-gray-500">YOU WIN!</div>
-        <div class="text-lg text-center text-gray-500">
-          Play again... maybe you'll make it to the high score list!
-        </div>
-        <div class="h-16 flex flex-wrap content-center justify-center">
-          <button
-            class="
-              bg-green-500
-              hover:bg-green-700
-              text-white
-              font-bold
-              py-2
-              px-4
-              rounded-full
-            "
-            @click="submitScore"
-          >
-            Submit Score!
-          </button>
-          <button
-            class="
-              bg-blue-500
-              hover:bg-blue-700
-              text-white
-              font-bold
-              py-2
-              px-4
-              rounded-full
-            "
-            @click="reset"
-          >
-            PLAY AGAIN!
-          </button>
-        </div>
-      </div>
-    </div>
+  <div v-show="gameOver" class="modal">
+    <GameOver />
   </div>
   <!-- <div class="intro" v-show="startFlag">Get all the tiles and don't fall!</div> -->
 </template>
@@ -111,12 +40,18 @@ import {
   gameOver,
   canvasCar,
   startFlag,
+  scores,
+  scoreId,
+  position,
+  averageFps,
 } from "./js/canvasEvents";
 const debounce = require("lodash/debounce");
 const throttle = require("lodash/throttle");
 const isEmpty = require("lodash/isEmpty");
+import GameOver from "./GameOver.vue";
 
 export default {
+  components: { GameOver },
   setup() {
     const con = ref(null); // canvas container ref
     const can = ref(null); // canvas ref
@@ -132,6 +67,9 @@ export default {
         animationId.value = window.requestAnimationFrame(animate);
         console.log(animationId.value);
       }
+    });
+    watch(scoreId, (value) => {
+      console.log("NEWSCORE!!", value);
     });
     const options = {
       acceleration: 1.03,
@@ -175,8 +113,8 @@ export default {
       );
     };
     const submitScore = () => {
-      cFunction.setScore(averageFps.value, "Cool Dude");
-      cFunction.reset();
+      cFunction.setScore();
+      // cFunction.reset();
     };
     const close = () => {
       gameOver.value = false;
@@ -240,7 +178,6 @@ export default {
       d: { pressed: false, func: right },
     });
     let time = 0;
-    let averageFps = ref({});
     let samples = [];
 
     const animate = (timeStamp) => {
@@ -368,6 +305,9 @@ export default {
       touchEnd,
       swipeStop,
       submitScore,
+      scores,
+      scoreId,
+      position,
       // ...canvasEvents,
     };
   },
@@ -424,13 +364,9 @@ export default {
   display: block; /* Hidden by default */
   position: fixed; /* Stay in place */
   z-index: 1; /* Sit on top */
-  left: 0;
-  top: 0;
+  /* top: 0; */
   color: white;
-  width: 100%; /* Full width */
-  height: 100%; /* Full height */
   overflow: auto; /* Enable scroll if needed */
-  background-color: rgb(0, 0, 0); /* Fallback color */
   background-color: rgba(0, 0, 0, 0.4); /* Black w/ opacity */
 }
 
@@ -459,9 +395,7 @@ export default {
   background-color: #fefefe;
   margin: auto;
   padding: 0;
-  border: 1px solid #888;
   width: 80%;
-  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
   animation-name: animatetop;
   animation-duration: 0.8s;
 }

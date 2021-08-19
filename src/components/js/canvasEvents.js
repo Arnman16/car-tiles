@@ -12,9 +12,15 @@ let gameOver = ref(false);
 let startFlag = ref(true);
 let canvas = reactive({});
 let currentSquare = null;
-let youWin = false;
+const youWin = ref(false);
 let blocksRemaining = ref(99);
 const canvasCar = ref({});
+const scores = ref({});
+const scoreId = ref("");
+const position = ref("");
+const averageFps = ref({});
+let isGameOver = false;
+
 let conHolder = {};
 let startTime;
 let elapsedTime = 0;
@@ -38,6 +44,7 @@ const cEvent = {
     canvas.selection = false;
     canvas.objectCaching = false;
     gameOver.value = false;
+    isGameOver = false;
     canvas.setBackgroundImage(gridBg, canvas.renderAll.bind(canvas));
     canvas.on("after:render", () => {
       this.afterRender();
@@ -100,9 +107,19 @@ const cEvent = {
     startFlag.value = true;
     print("00:00:000");
   },
+  instawin() {
+    blocksRemaining.value = 0;
+    this.winner();
+  },
+  setGameOver() {
+    gameOver.value = true
+  },
   winner() {
     pause();
-    youWin = true;
+    youWin.value = true;
+    setTimeout(this.setGameOver, 700);
+    isGameOver = true;
+    cFunction.fetchScores();
     canvas.forEachObject(obj => {
       if (obj !== canvas.car && obj !== canvas.introText) {
         obj.opacity = 1;
@@ -187,7 +204,7 @@ const cEvent = {
     }
   },
   afterRender: throttle(() => {
-    if (!canvas.car || gameOver.value || youWin) return;
+    if (!canvas.car || isGameOver || youWin.value) return;
     if (blocksRemaining.value === 0) {
       cEvent.winner();
       return;
@@ -197,7 +214,8 @@ const cEvent = {
       if (canvas.car.intersectsWithObject(obj) && obj !== canvas.car && obj !== currentSquare && obj !== canvas.introText) {
         if (obj.tod && (timeNow - obj.tod > 2000)) {
           pause();
-          gameOver.value = true;
+          setTimeout(cEvent.setGameOver, 700);
+          isGameOver = true;
           canvas.car.set({ opacity: 0.8, scaleX: 0.9, scaleY: 0.9 });
           canvas.car.animate({ scaleX: 0.001, scaleY: 0.001, opacity: 0 }, {
             onChange: canvas.requestRenderAll.bind(canvas),
@@ -210,6 +228,7 @@ const cEvent = {
           blocksRemaining.value--;
           if (blocksRemaining.value > 0) {
             obj.death = true;
+            // cEvent.instawin();
             obj.tod = Date.now();
             currentSquare = obj;
             obj.animate({ opacity: 0, scaleX: 0.8, scaleY: 0.8, }, { onChange: canvas.renderAll.bind(canvas) }, 1);
@@ -230,17 +249,19 @@ const cFunction = {
     canvas.discardActiveObject();
   },
   reset() {
-    youWin = false;
+    position.value = null;
+    youWin.value = false;
     canvas.forEachObject((obj) => {
       canvas.remove(obj);
     });
     // canvas.clear();
     gameOver.value = false;
+    isGameOver = false;
     canvas.car.currentSpeed = 0;
     canvas.car.lastSpeed = 0;
     currentSquare = null;
-    cEvent.setObjects();
-    cEvent.setSquares();
+    setTimeout(cEvent.setSquares, 100);
+    setTimeout(cEvent.setObjects, 150);
     blocksRemaining.value = 99;
   },
   setView() {
@@ -256,40 +277,76 @@ const cFunction = {
     // canvas.requestRenderAll();
     canvas.car.lastSpeed = canvas.car.currentSpeed;
   },
-  setScore(fps, name) {
+  async setScore() {
     let user = firebase.auth().currentUser;
     if (!user) {
-      firebase.auth().signInAnonymously()
-        .then((result) => {
-          // Signed in..
-          scoreCollection.add({
-            uid: result.user.uid,
-            name: name,
-            time: timer.value,
-            timeInt: elapsedTime,
-            averageFps: fps,
-            timeStamp: firebase.firestore.FieldValue.serverTimestamp(),
-          });
-          console.log(result.user);
-        })
-        .catch((error) => {
-          var errorCode = error.code;
-          var errorMessage = error.message;
-          console.log(errorCode, errorMessage)
-          // ...
+      try {
+        let result = await firebase.auth().signInAnonymously();
+        console.log(result.user);
+        const newScore = await scoreCollection.add({
+          uid: result.user.uid,
+          name: "anon",
+          time: timer.value,
+          timeInt: elapsedTime,
+          averageFps: averageFps.value,
+          timeStamp: firebase.firestore.FieldValue.serverTimestamp(),
         });
+        scoreId.value = newScore.id;
+        position.value = await this.getPosition(newScore.id);
+      } catch (error) {
+        console.log(error.code, error.message)
+      }
     }
     else {
-      scoreCollection.add({
-        uid: user.uid,
-        name: name,
-        time: timer.value,
-        timeInt: elapsedTime,
-        averageFps: fps,
-        timeStamp: firebase.firestore.FieldValue.serverTimestamp(),
-      });
+      try {
+        console.log('USER!!', user);
+        const newScore = await scoreCollection.add({
+          uid: user.uid,
+          name: "anon",
+          time: timer.value,
+          timeInt: elapsedTime,
+          averageFps: averageFps.value,
+          timeStamp: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+        scoreId.value = newScore.id;
+        position.value = await this.getPosition(newScore.id);
+      } catch (error) {
+        console.log(error.code, error.message)
+      }
     }
-  }
+  },
+  async getPosition(scoreId) {
+    let count = 1;
+    let isFound = false;
+    const scoreList = await scoreCollection
+      .orderBy("timeInt")
+      .get();
+    scoreList.docs.every((score) => {
+      console.log(score.id, scoreId, score.data());
+      if (score.id === scoreId) {
+        isFound = true;
+        return false;
+      }
+      count++;
+      return true;
+    });
+    if (isFound) return count;
+    else return null;
+  },
+  async fetchScores() {
+    scoreCollection
+      .orderBy("timeInt")
+      .limit(10)
+      .onSnapshot((snapshot) => {
+        let scoreList = [];
+        snapshot.forEach((doc) => {
+          let thisScore = doc.data();
+          thisScore.id = doc.id;
+          scoreList.push(thisScore);
+        });
+        scores.value = scoreList;
+      });
+  },
 }
 // Convert time to a format of hours, minutes, seconds, and milliseconds
 
@@ -342,6 +399,6 @@ function reset() {
 export {
   canvas,
   cEvent,
-  cFunction, mouseOver, blocksRemaining, timer, gameOver, canvasCar, startFlag,
+  cFunction, mouseOver, blocksRemaining, timer, gameOver, canvasCar, startFlag, scores, scoreId, position, averageFps, youWin
 }
 

@@ -1,17 +1,19 @@
 <template>
   <!-- <NavB /> -->
+  <!-- <GameOver /> -->
   <Canvas />
 </template>
 
 <script>
-import Canvas from "./components/Canvas.vue";
-// import NavB from "./components/NavB.vue";
+import Canvas from './components/Canvas.vue';
+// import Canvas from "./components/Canvas.vue";
+// import GameOver from "./components/GameOver.vue";
 
 export default {
   name: "App",
   components: {
-    Canvas,
-    // NavB,
+    Canvas
+    // GameOver,
   },
 };
 </script>

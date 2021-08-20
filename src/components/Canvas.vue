@@ -210,7 +210,7 @@ export default {
         if (controller.value[e.key]) {
           controller.value[e.key].pressed = true;
         }
-        e.preventDefault();
+        // e.preventDefault();
         e.stopPropagation();
       });
       window.addEventListener("keyup", (e) => {

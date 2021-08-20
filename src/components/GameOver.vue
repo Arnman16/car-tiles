@@ -44,6 +44,46 @@
           <div class="mx-2 text-center">
             {{ message.body }}
             <br />
+            <input
+              prevent.default
+              class="
+                shadow
+                appearance-none
+                border
+                rounded
+                w-2/4
+                py-2
+                px-3
+                text-gray-700
+                leading-tight
+                focus:outline-none
+                focus:shadow-outline
+              "
+              v-model="username"
+              type="text"
+              placeholder="Change name"
+              v-show="showNameChange"
+            />
+            <button
+              v-show="showNameChange"
+              @click="
+                changeName(username);
+                showNameChange = false;
+              "
+              class="
+                w-1/4
+                bg-transparent
+                hover:bg-indigo-500
+                font-semibold
+                border-2
+                rounded
+                py-1
+                ml-1
+              "
+            >
+              Save
+            </button>
+            <br />
             <button
               class="
                 bg-transparent
@@ -55,7 +95,10 @@
                 rounded
                 mt-2
               "
-              @click="reset"
+              @click="
+                reset();
+                showNameChange = true;
+              "
             >
               Play Again
             </button>
@@ -143,9 +186,17 @@ import {
 // const isEmpty = require("lodash/isEmpty");
 export default {
   setup() {
+    const showNameChange = ref(true);
+    const username = ref("");
     const message = ref({
       title: "Sorry.",
       body: "You didn't make it to the high score list.",
+    });
+    watch(username, (newvalue, oldvalue) => {
+      if (newvalue.length > 8) {
+        console.log("TETST");
+        username.value = oldvalue;
+      }
     });
     watch(gameOver, (isOver) => {
       if (isOver && blocksRemaining.value === 0) {
@@ -173,9 +224,12 @@ export default {
       position,
       scoreId,
       reset: cFunction.reset,
+      changeName: cFunction.changeName,
       timer,
       gameOver,
       youWin,
+      username,
+      showNameChange,
     };
   },
 };

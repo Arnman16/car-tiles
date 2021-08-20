@@ -315,6 +315,11 @@ const cFunction = {
       }
     }
   },
+  changeName(name) {
+    scoreCollection.doc(scoreId.value).update({
+      name: name
+    });
+  },
   async getPosition(scoreId) {
     let count = 1;
     let isFound = false;

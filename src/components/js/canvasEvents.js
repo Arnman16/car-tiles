@@ -3,7 +3,7 @@ import { fabric } from "fabric";
 import { scoreCollection, firebase } from "./db";
 const throttle = require("lodash/throttle");
 const gridBg = require("../../assets/grid.svg");
-const car = require("../../assets/car5.png");
+const car = require("../../assets/car.svg");
 const pavement1 = require("../../assets/pavement1.jpg");
 const pavement2 = require("../../assets/pavement2.jpg");
 const pavement3 = require("../../assets/pavement3.jpg");
@@ -65,8 +65,8 @@ const cEvent = {
       canvas.car = myImg;
       canvas.add(
         myImg.set({
-          // scaleY: 0.5,
-          // scaleX: 0.5,
+          scaleY: 1.5,
+          scaleX: 1.5,
           originX: "center",
           originY: "center",
           shadow: shadow,

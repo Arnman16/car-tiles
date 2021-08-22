@@ -6,7 +6,7 @@
     </pattern> -->
     <pattern id="grid" width="1000" height="1000" patternUnits="userSpaceOnUse">
       <rect width="1000" height="1000" fill="none"/>
-      <path d="M 1000 0 L 0 0 0 1000" fill="none" stroke="white" opacity="0.1" stroke-width="2"/>
+      <path d="M 1000 0 L 0 0 0 1000" fill="none" stroke="rgb(70,70,70)" stroke-width="2"/>
     </pattern>
   </defs>
   <rect width="10000" height="10000" fill="url(#grid)" />

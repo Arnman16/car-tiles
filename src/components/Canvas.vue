@@ -179,15 +179,15 @@ export default {
     });
     let time = 0;
     let samples = [];
+    let sum = 0;
 
     const animate = (timeStamp) => {
       let fps = 1000 / (timeStamp - time);
       samples.push(fps);
-      if (samples.length > 60) samples.shift();
-      let sum = 0;
-      samples.forEach((sample) => {
-        sum += sample;
-      });
+      sum += fps;
+      if (samples.length > 60) {
+        sum -= samples.shift();
+      }
       averageFps.value = `${(sum / samples.length).toFixed(1)} fps`;
       // console.log("fps: ", average.value);
       time = timeStamp;
